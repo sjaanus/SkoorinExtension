@@ -24,15 +24,12 @@ Game.prototype.getSkinWinnings = function() {
     var orderedScores = getOrderedScoresList(this.players);
     var winnings = [].repeat(0, this.players.length);
     var prize = 0;
-
     // do the loop as many scores there are
     orderedScores[0].forEach(function(a, index){
         prize += skinValue;
-        // build basket scores
-        var basketScores = [];
-        orderedScores.forEach(function(score, scoreIndex){
-            basketScores.push(score[index]);
-        });
+
+        var basketScores = orderedScores.map(function(scoreList){ return scoreList[index]; });
+
         var minimum = Math.min.apply(null, basketScores);
         // now count if there is only one minimum
         if(basketScores.filter(function(basketScore) { return basketScore == minimum}).length == 1) {
@@ -117,21 +114,21 @@ function drawRadiobuttons() {
     playerRows.each(function(index, value){
         playersInSkinGame.push(true);
         var checked = ctpWinner == index ? "checked" : "";
-        $(this).prepend("<td class='center'><input type='radio'" + checked + " name='ctp' value='" + index + "'/></td>");
+        $(this).prepend("<td class='center ctpColumn'><input type='radio'" + checked + " name='ctp' value='" + index + "'/></td>");
     });
     var headerRows = getHeaderRow();
     headerRows.each(function(index, value){
-        $(this).prepend("<th class='center'>Won final CTP</th>");
+        $(this).prepend("<th class='center ctpColumn'>Won final CTP</th>");
     });
     var titleRows = getTitleRow();
     titleRows.each(function(index, value){
-        $(this).prepend("<td></td>");
+        $(this).prepend("<td class='ctpColumn'></td>");
     });
 
     $('input:radio').change(function(){
         var index = this.value;
         ctpWinner = index;
-        drawWins(true);
+        refreshWins();
     });
 }
 
@@ -148,18 +145,18 @@ function drawCheckboxes() {
      });
      var titleRows = getTitleRow();
      titleRows.each(function(index, value){
-         $(this).prepend("<td class='center'></td>"); //Starting basket <input type='number' name='quantity' min='1' max='5' value='1'>
+         $(this).prepend("<td class='center'></td>");
      });
 
      $('input:checkbox').change(function(){
-         var name = this.name;
-         var index = parseInt(name.substring(name.indexOf("_") + 1));
-         if($(this).is(':checked')){
-             playersInSkinGame[index] = true;
-         } else {
-             playersInSkinGame[index] = false;
-         }
-         drawWins(true);
+        var name = this.name;
+        var index = parseInt(name.substring(name.indexOf("_") + 1));
+        if($(this).is(':checked')){
+            playersInSkinGame[index] = true;
+        } else {
+            playersInSkinGame[index] = false;
+        }
+        refreshWins();
      });
  }
 
@@ -170,29 +167,37 @@ function drawWins(isRedraw) {
     var game = new Game();
     var winnings = game.getSkinWinnings();
 
-    if(!isRedraw) {
-        playerRows.each(function(index, value){
-            $(this).append("<td class='center winnings'>" + winnings[index] + "€</td>");
-        });
-        headerRows.each(function(index, value){
-            $(this).append("<th class='center'>Won/Loss</th>");
-        });
-        var titleRows = getTitleRow();
-        titleRows.each(function(index, value){
-             $(this).append("<td class='center'></td>");
-        });
-    } else {
-        // do redraw
-        var skip = 0;
-        $('.winnings').each(function(index, value){
-            if(playersInSkinGame[index]) {
-                $(value).text(winnings[index - skip] + "€");
-            } else {
-                $(value).text("");
-                skip++;
-            }
-        });
-    }
+
+    playerRows.each(function(index, value){
+        $(this).append("<td class='center winnings'></td>");
+    });
+    headerRows.each(function(index, value){
+        $(this).append("<th class='center'>Won/Loss</th>");
+    });
+    var titleRows = getTitleRow();
+    titleRows.each(function(index, value){
+         $(this).append("<td class='center'></td>");
+    });
+}
+
+function refreshWins(isRedraw) {
+    var playerRows = getPlayerRows();
+    var headerRows = getHeaderRow();
+
+    var game = new Game();
+    var winnings = game.getSkinWinnings();
+
+
+    var skip = 0;
+    $('.winnings').each(function(index, value){
+        if(playersInSkinGame[index]) {
+            $(value).text(winnings[index - skip] + "€");
+        } else {
+            $(value).text("");
+            skip++;
+        }
+    });
+
 }
 
 function drawInputFields() {
@@ -203,13 +208,28 @@ function drawInputFields() {
     $('#startBasket').change(function(){
         var basket = this.value;
         startBasket = basket;
-        drawWins(true);
+
+        hideCtpColumn();
+        refreshWins();
     });
     $('#skinValue').change(function(){
         var value = this.value;
         skinValue = parseFloat(value);
-        drawWins(true);
+        refreshWins();
     });
+}
+function hideCtpColumn() {
+    // hide CPT column
+    var players = getPlayers();
+    var orderedScores = getOrderedScoresList(players);
+    var lastHoleScores = orderedScores.map(function(scoreList) { return scoreList[orderedScores[0].length - 1]});
+    var minimum = Math.min.apply(null, lastHoleScores);
+
+    if(lastHoleScores.filter(function(basketScore) { return basketScore == minimum}).length == 1) {
+        $('.ctpColumn').hide();
+    } else {
+        $('.ctpColumn').show();
+    }
 }
 
 function isValidPage() {
@@ -224,6 +244,8 @@ function draw() {
         drawRadiobuttons();
         drawCheckboxes();
         drawWins();
+        refreshWins();
+        hideCtpColumn();
     }
 }
 
